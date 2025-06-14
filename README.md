@@ -6,4 +6,9 @@ This is the code repository for the semester group project of the SS25 course ["
 
 [2] R. Pascanu, "GroundHog", GitHub Repository https://github.com/lisa-groundhog/GroundHog, last accessed: 05 Jun. 2025.
 
+## Technical details
+
+- Technology stack:
+  - Python version: 3.12
+  - Needed dependencies: present in the "requirements.txt" file
 
