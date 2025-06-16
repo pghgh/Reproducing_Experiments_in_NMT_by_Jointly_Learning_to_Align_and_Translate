@@ -14,6 +14,7 @@ from torch import optim
 import time
 import math
 import matplotlib.pyplot as plt
+
 plt.switch_backend('agg')
 import matplotlib.ticker as ticker
 import numpy as np
@@ -24,6 +25,7 @@ def asMinutes(s):
     s -= m * 60
     return '%dm %ds' % (m, s)
 
+
 def timeSince(since, percent):
     now = time.time()
     s = now - since
@@ -31,9 +33,9 @@ def timeSince(since, percent):
     rs = es - s
     return '%s (- %s)' % (asMinutes(s), asMinutes(rs))
 
-def train_epoch(dataloader, encoder, decoder, encoder_optimizer,
-          decoder_optimizer, criterion):
 
+def train_epoch(dataloader, encoder, decoder, encoder_optimizer,
+                decoder_optimizer, criterion):
     total_loss = 0
     for data in dataloader:
         input_tensor, target_tensor = data
@@ -59,9 +61,8 @@ def train_epoch(dataloader, encoder, decoder, encoder_optimizer,
     return total_loss / len(dataloader)
 
 
-
 def train(train_dataloader, encoder, decoder, n_epochs, learning_rate=10 ** -6,
-               print_every=100, plot_every=100):
+          print_every=100, plot_every=100):
     start = time.time()
     plot_losses = []
     print_loss_total = 0
@@ -69,7 +70,7 @@ def train(train_dataloader, encoder, decoder, n_epochs, learning_rate=10 ** -6,
 
     encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate)
     decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
-    criterion = nn.MSELoss() # squared L2 norm
+    criterion = nn.NLLLoss()
 
     for epoch in range(1, n_epochs + 1):
         loss = train_epoch(train_dataloader, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion)
@@ -80,7 +81,7 @@ def train(train_dataloader, encoder, decoder, n_epochs, learning_rate=10 ** -6,
             print_loss_avg = print_loss_total / print_every
             print_loss_total = 0
             print('%s (%d %d%%) %.4f' % (timeSince(start, epoch / n_epochs),
-                                        epoch, epoch / n_epochs * 100, print_loss_avg))
+                                         epoch, epoch / n_epochs * 100, print_loss_avg))
 
         if epoch % plot_every == 0:
             plot_loss_avg = plot_loss_total / plot_every
@@ -88,6 +89,7 @@ def train(train_dataloader, encoder, decoder, n_epochs, learning_rate=10 ** -6,
             plot_loss_total = 0
 
     showPlot(plot_losses)
+
 
 def showPlot(points):
     plt.figure()
@@ -98,19 +100,37 @@ def showPlot(points):
     plt.plot(points)
 
 
+# works with batch=1 only
+def inference_beam_search(dataloader, encoder, decoder):
+    decoder.eval()
+    encoder.eval()
+    with torch.no_grad():
+        for input_tensor, _ in dataloader:
+            encoder_outputs, encoder_hidden = encoder(input_tensor)
+            result = decoder.beam_search(encoder_outputs, encoder_hidden)
+            print(result)
+
+
 if __name__ == "__main__":
-    seed = 1
+    # architecture predefined params (though definitely should be decreased)
     hidden_size = 1000
+    emb_dim = 620
     batch_size = 80
 
-    encoder = EncoderBiRNN(10, hidden_size)
-    decoder = DecoderAttentionRNN(hidden_size, 10)
+    # vocab length for both languages
+    vocab_length1 = 10
+    vocab_length2 = 10
+
+    encoder = EncoderBiRNN(vocab_length1, emb_dim, hidden_size)
+    decoder = DecoderAttentionRNN(vocab_length2, emb_dim, hidden_size)
 
     # dummy sentences which were converted as integers
-    sentences_list = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]
-    training_data = TensorDataset(torch.tensor([sentences_list]))
+    sentences_list = [[1, 2], [3, 4], [5, 6], [7, 8]]
+    training_data = torch.tensor(sentences_list, dtype=torch.long)
+    training_data = TensorDataset(training_data, training_data)
     train_dataloader = DataLoader(training_data, batch_size=80, shuffle=True)
     train(train_dataloader, encoder, decoder, 80, print_every=5, plot_every=5)
+    inference_beam_search(DataLoader(training_data, batch_size=1, shuffle=True), encoder, decoder)
 
 # TAKEN FROM END 1
 
