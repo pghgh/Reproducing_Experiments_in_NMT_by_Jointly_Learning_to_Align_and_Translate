@@ -12,7 +12,7 @@ import torch.nn.functional as F
 
 SOS_token = 0
 EOS_token = 1
-MAX_LENGTH_SENTENCE = 10  # maximum length of sentence in words
+MAX_LENGTH_SENTENCE = 7  # maximum length of sentence in words
 
 # for debugging purposes, the following abbreviations were used: B - batch, S - sequence, F - features
 
@@ -72,17 +72,17 @@ class DecoderAttentionRNN(nn.Module):
             decoder_outputs.append(decoder_output)
             attentions.append(attn_weights)
 
-            #if target_tensor is not None:
-            #    decoder_input = target_tensor[:, i].unsqueeze(1)
-            #else:
-            #    _, topi = decoder_output.topk(1)
-            #    decoder_input = topi.squeeze(-1).detach()
+            if target_tensor is not None:
+                decoder_input = target_tensor[:, i].unsqueeze(1)
+            else:
+                _, topi = decoder_output.topk(1)
+                decoder_input = topi.squeeze(-1).detach()
 
-            #    if (decoder_input == EOS_token).all():
-            #        break
+                if (decoder_input == EOS_token).all():
+                    break
 
         decoder_outputs = torch.cat(decoder_outputs, dim=1)
-        decoder_outputs = F.softmax(decoder_outputs, dim=-1)
+        decoder_outputs = F.log_softmax(decoder_outputs, dim=-1)
         attentions = torch.cat(attentions, dim=1)
 
         return decoder_outputs, decoder_hidden, attentions

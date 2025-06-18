@@ -70,6 +70,9 @@ def inference_beam_search(dataloader, encoder, decoder):
 
 # TAKEN FROM START 1
 if __name__ == "__main__":
+    seed = 1
+    torch.manual_seed(seed)
+
     # architecture predefined params (though definitely should be decreased when testing, these are the numbers from the paper)
     hidden_size = 1000
     emb_dim = 620
@@ -88,8 +91,8 @@ if __name__ == "__main__":
     integer_to_word_en = {0: "SOS_token", 1: "EOS_token", 2: "i", 3: "saw", 4: "a", 5: "black", 6: "cat"}
     integer_to_word_fr = {0: "SOS_token", 1: "EOS_token", 2: "j", 3: "ai", 4: "vu", 5: "un", 6: "chat", 7: "noir"}
     # the structure of the list is [language_id, [SOS_token, id_1, id_2, ..., id_n, EOS_token]]
-    input_ids = [0, 2, 3, 4, 5, 6, 1]
-    target_ids = [0, 2, 3, 4, 5, 6, 1]
+    input_ids = [[0, 2, 3, 4, 5, 6, 1]]
+    target_ids = [[0, 2, 3, 4, 5, 6, 1]]
 
     input_ids = torch.tensor(input_ids, dtype=torch.long)
     target_ids = torch.tensor(target_ids, dtype=torch.long)
