@@ -1,7 +1,7 @@
 """
 TAKEN FROM 1
 
-The code for creating the encoder and decoder was taken from the following source:
+The vast majority of the code for creating the encoder and decoder was taken from the following source:
 https://docs.pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html
 """
 
@@ -11,29 +11,10 @@ from src.RNNsearch import EncoderBiRNN, DecoderAttentionRNN
 import torch
 import torch.nn as nn
 from torch import optim
-import time
-import math
-import matplotlib.pyplot as plt
-plt.switch_backend('agg')
-import matplotlib.ticker as ticker
-import numpy as np
 
-
-def asMinutes(s):
-    m = math.floor(s / 60)
-    s -= m * 60
-    return '%dm %ds' % (m, s)
-
-def timeSince(since, percent):
-    now = time.time()
-    s = now - since
-    es = s / (percent)
-    rs = es - s
-    return '%s (- %s)' % (asMinutes(s), asMinutes(rs))
 
 def train_epoch(dataloader, encoder, decoder, encoder_optimizer,
-          decoder_optimizer, criterion):
-
+                decoder_optimizer, criterion):
     total_loss = 0
     for data in dataloader:
         input_tensor, target_tensor = data
@@ -59,59 +40,65 @@ def train_epoch(dataloader, encoder, decoder, encoder_optimizer,
     return total_loss / len(dataloader)
 
 
-
-def train(train_dataloader, encoder, decoder, n_epochs, learning_rate=10 ** -6,
-               print_every=100, plot_every=100):
-    start = time.time()
-    plot_losses = []
+def train(train_dataloader, encoder, decoder, n_epochs, learning_rate=10 ** -6, print_every=100):
     print_loss_total = 0
-    plot_loss_total = 0
 
     encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate)
     decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
-    criterion = nn.MSELoss() # squared L2 norm
+    criterion = nn.NLLLoss()
 
     for epoch in range(1, n_epochs + 1):
         loss = train_epoch(train_dataloader, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion)
         print_loss_total += loss
-        plot_loss_total += loss
-
         if epoch % print_every == 0:
             print_loss_avg = print_loss_total / print_every
+            print("print_loss_avg after further 100 epochs", print_loss_avg)
             print_loss_total = 0
-            print('%s (%d %d%%) %.4f' % (timeSince(start, epoch / n_epochs),
-                                        epoch, epoch / n_epochs * 100, print_loss_avg))
-
-        if epoch % plot_every == 0:
-            plot_loss_avg = plot_loss_total / plot_every
-            plot_losses.append(plot_loss_avg)
-            plot_loss_total = 0
-
-    showPlot(plot_losses)
-
-def showPlot(points):
-    plt.figure()
-    fig, ax = plt.subplots()
-    # this locator puts ticks at regular intervals
-    loc = ticker.MultipleLocator(base=0.2)
-    ax.yaxis.set_major_locator(loc)
-    plt.plot(points)
-
-
-if __name__ == "__main__":
-    seed = 1
-    hidden_size = 1000
-    batch_size = 80
-
-    encoder = EncoderBiRNN(10, hidden_size)
-    decoder = DecoderAttentionRNN(hidden_size, 10)
-
-    # dummy sentences which were converted as integers
-    sentences_list = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]
-    training_data = TensorDataset(torch.tensor([sentences_list]))
-    train_dataloader = DataLoader(training_data, batch_size=80, shuffle=True)
-    train(train_dataloader, encoder, decoder, 80, print_every=5, plot_every=5)
-
 # TAKEN FROM END 1
 
-# TODO: modify sentences_list so that the code runs & potentially rewrite evaluation part
+# works with batch=1 only
+def inference_beam_search(dataloader, encoder, decoder):
+    decoder.eval()
+    encoder.eval()
+    with torch.no_grad():
+        for input_tensor, _ in dataloader:
+            encoder_outputs, encoder_hidden = encoder(input_tensor)
+            result = decoder.beam_search(encoder_outputs, encoder_hidden)
+            print(result)
+
+
+
+# TAKEN FROM START 1
+if __name__ == "__main__":
+    seed = 1
+    torch.manual_seed(seed)
+
+    # architecture predefined params (though definitely should be decreased when testing, these are the numbers from the paper)
+    hidden_size = 1000
+    emb_dim = 620
+    batch_size = 80
+
+    # vocab length for both languages
+    vocab_length1 = 10
+    vocab_length2 = 10
+
+    no_epochs = 5
+    encoder = EncoderBiRNN(vocab_length1, emb_dim, hidden_size)
+    decoder = DecoderAttentionRNN(vocab_length2, emb_dim, hidden_size)
+
+    # dummy sentences which were converted as integers (with ids)
+    sentences_list = ["i saw a black cat", "j'ai vu un chat noir"]
+    integer_to_word_en = {0: "SOS_token", 1: "EOS_token", 2: "i", 3: "saw", 4: "a", 5: "black", 6: "cat"}
+    integer_to_word_fr = {0: "SOS_token", 1: "EOS_token", 2: "j", 3: "ai", 4: "vu", 5: "un", 6: "chat", 7: "noir"}
+    # the structure of the list is [language_id, [SOS_token, id_1, id_2, ..., id_n, EOS_token]]
+    input_ids = [[0, 2, 3, 4, 5, 6, 1]]
+    target_ids = [[0, 2, 3, 4, 5, 6, 1]]
+
+    input_ids = torch.tensor(input_ids, dtype=torch.long)
+    target_ids = torch.tensor(target_ids, dtype=torch.long)
+    training_data = TensorDataset(input_ids, target_ids)
+    train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
+    train(train_dataloader, encoder, decoder, no_epochs, print_every=1)
+    inference_beam_search(DataLoader(training_data, batch_size=1, shuffle=True), encoder, decoder)
+
+# TAKEN FROM END 1
