@@ -1,7 +1,7 @@
 """
 TAKEN FROM 1
 
-The code for creating the encoder and decoder was taken from the following source:
+The vast majority of the code for performing the experiments with RNNsearch was taken from the following source:
 https://docs.pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html
 """
 
@@ -14,12 +14,13 @@ SOS_token = 0
 EOS_token = 1
 MAX_LENGTH_SENTENCE = 10  # maximum length of sentence in words
 
+# for debugging purposes, the following abbreviations were used: B - batch, S - sequence, F - features
 
 class EncoderBiRNN(nn.Module):
     def __init__(self, vocab_length, emb_dim=620, hidden_size=1000, dropout_p=0.1):
         super(EncoderBiRNN, self).__init__()
         self.embedding = nn.Embedding(vocab_length, emb_dim)
-        self.rnn = nn.GRU(input_size=emb_dim, hidden_size=hidden_size, batch_first=True, bidirectional=True)
+        self.rnn = nn.RNN(input_size=emb_dim, hidden_size=hidden_size, batch_first=True, bidirectional=True)
         self.dropout = nn.Dropout(dropout_p)
 
     def forward(self, input):
@@ -50,7 +51,7 @@ class DecoderAttentionRNN(nn.Module):
         super(DecoderAttentionRNN, self).__init__()
         self.embedding = nn.Embedding(vocab_length, emb_dim)
         self.attention = BahdanauAttention(hidden_size)
-        self.rnn = nn.GRU(emb_dim + 2 * hidden_size, hidden_size, batch_first=True)
+        self.rnn = nn.RNN(emb_dim + 2 * hidden_size, hidden_size, batch_first=True)
         self.out = nn.Linear(hidden_size, vocab_length)
         self.proj = nn.Linear(2 * hidden_size, hidden_size)
         self.dropout = nn.Dropout(dropout_p)
@@ -71,17 +72,17 @@ class DecoderAttentionRNN(nn.Module):
             decoder_outputs.append(decoder_output)
             attentions.append(attn_weights)
 
-            if target_tensor is not None:
-                decoder_input = target_tensor[:, i].unsqueeze(1)
-            else:
-                _, topi = decoder_output.topk(1)
-                decoder_input = topi.squeeze(-1).detach()
+            #if target_tensor is not None:
+            #    decoder_input = target_tensor[:, i].unsqueeze(1)
+            #else:
+            #    _, topi = decoder_output.topk(1)
+            #    decoder_input = topi.squeeze(-1).detach()
 
-                if (decoder_input == EOS_token).all():
-                    break
+            #    if (decoder_input == EOS_token).all():
+            #        break
 
         decoder_outputs = torch.cat(decoder_outputs, dim=1)
-        decoder_outputs = F.log_softmax(decoder_outputs, dim=-1)
+        decoder_outputs = F.softmax(decoder_outputs, dim=-1)
         attentions = torch.cat(attentions, dim=1)
 
         return decoder_outputs, decoder_hidden, attentions
