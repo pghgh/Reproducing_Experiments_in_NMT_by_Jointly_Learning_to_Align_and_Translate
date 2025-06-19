@@ -81,23 +81,26 @@ if __name__ == "__main__":
     # vocab length for both languages
     vocab_length1 = 10
     vocab_length2 = 10
-
     no_epochs = 5
-    encoder = Encoder(vocab_length1, emb_dim, hidden_size)
-    decoder = Decoder(vocab_length2, emb_dim, hidden_size)
 
     # dummy sentences which were converted as integers (with ids)
     sentences_list = ["i saw a black cat", "j'ai vu un chat noir"]
     integer_to_word_en = {0: "SOS_token", 1: "EOS_token", 2: "i", 3: "saw", 4: "a", 5: "black", 6: "cat"}
     integer_to_word_fr = {0: "SOS_token", 1: "EOS_token", 2: "j", 3: "ai", 4: "vu", 5: "un", 6: "chat", 7: "noir"}
-    # the structure of the list is [language_id, [SOS_token, id_1, id_2, ..., id_n, EOS_token]]
-    input_ids = [[0, 2, 3, 4, 5, 6, 1]]
-    target_ids = [[0, 2, 3, 4, 5, 6, 1]]
+    # the structure of the list is [[ids for sentence no. 1], ... ,[ids for sentence no. n]]
+    # a concrete example: [[SOS_token, id_1, id_2, ..., id_n, EOS_token], ... ,[SOS_token, id_1, id_2, ..., id_n, EOS_token]]
+    input_ids = [[0, 2, 3, 4, 5, 6, 1], [0, 2, 3, 4, 5, 6, 1]]
+    target_ids = [[0, 2, 3, 4, 5, 6, 1], [0, 2, 3, 4, 5, 6, 1]]
+    MAX_LENGTH_SENTENCE = len(input_ids[0])
 
     input_ids = torch.tensor(input_ids, dtype=torch.long)
     target_ids = torch.tensor(target_ids, dtype=torch.long)
     training_data = TensorDataset(input_ids, target_ids)
     train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
+
+    encoder = Encoder(vocab_length1, emb_dim, hidden_size)
+    decoder = Decoder(vocab_length2, MAX_LENGTH_SENTENCE, emb_dim, hidden_size)
+
     train(train_dataloader, encoder, decoder, no_epochs, print_every=1)
     inference_beam_search(DataLoader(training_data, batch_size=1, shuffle=True), encoder, decoder)
 

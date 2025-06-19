@@ -12,7 +12,6 @@ import torch.nn.functional as F
 
 SOS_token = 0
 EOS_token = 1
-MAX_LENGTH_SENTENCE = 7  # maximum length of sentence in words
 
 # for debugging purposes, the following abbreviations were used: B - batch, S - sequence, F - features
 
@@ -47,7 +46,7 @@ class BahdanauAttention(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, vocab_length, emb_dim=620, hidden_size=1000, dropout_p=0.1):
+    def __init__(self, vocab_length, MAX_LENGTH_SENTENCE, emb_dim=620, hidden_size=1000, dropout_p=0.1):
         super(Decoder, self).__init__()
         self.embedding = nn.Embedding(vocab_length, emb_dim)
         self.attention = BahdanauAttention(hidden_size)
@@ -55,6 +54,7 @@ class Decoder(nn.Module):
         self.out = nn.Linear(hidden_size, vocab_length)
         self.proj = nn.Linear(2 * hidden_size, hidden_size)
         self.dropout = nn.Dropout(dropout_p)
+        self.MAX_LENGTH_SENTENCE = MAX_LENGTH_SENTENCE
 
     def forward(self, encoder_outputs, encoder_hidden, target_tensor=None):
         batch_size = encoder_outputs.size(0)
@@ -65,21 +65,12 @@ class Decoder(nn.Module):
         decoder_outputs = []
         attentions = []
 
-        for i in range(MAX_LENGTH_SENTENCE):
+        for i in range(self.MAX_LENGTH_SENTENCE):
             decoder_output, decoder_hidden, attn_weights = self.forward_step(
                 decoder_input, decoder_hidden, encoder_outputs
             )
             decoder_outputs.append(decoder_output)
             attentions.append(attn_weights)
-
-            if target_tensor is not None:
-                decoder_input = target_tensor[:, i].unsqueeze(1)
-            else:
-                _, topi = decoder_output.topk(1)
-                decoder_input = topi.squeeze(-1).detach()
-
-                if (decoder_input == EOS_token).all():
-                    break
 
         decoder_outputs = torch.cat(decoder_outputs, dim=1)
         decoder_outputs = F.log_softmax(decoder_outputs, dim=-1)
@@ -109,7 +100,7 @@ class Decoder(nn.Module):
         beams = [(torch.tensor([[SOS_token]]), decoder_hidden, 0.0)]  # [sequence, hidden, score]
         completed_beams = []
 
-        for _ in range(MAX_LENGTH_SENTENCE):
+        for _ in range(self.MAX_LENGTH_SENTENCE):
             new_beams = []
 
             for seq, hidden, score in beams:
