@@ -16,16 +16,16 @@ MAX_LENGTH_SENTENCE = 7  # maximum length of sentence in words
 
 # for debugging purposes, the following abbreviations were used: B - batch, S - sequence, F - features
 
-class EncoderBiRNN(nn.Module):
+class Encoder(nn.Module):
     def __init__(self, vocab_length, emb_dim=620, hidden_size=1000, dropout_p=0.1):
-        super(EncoderBiRNN, self).__init__()
+        super(Encoder, self).__init__()
         self.embedding = nn.Embedding(vocab_length, emb_dim)
-        self.rnn = nn.RNN(input_size=emb_dim, hidden_size=hidden_size, batch_first=True, bidirectional=True)
+        self.gru = nn.GRU(input_size=emb_dim, hidden_size=hidden_size, batch_first=True, bidirectional=True)
         self.dropout = nn.Dropout(dropout_p)
 
     def forward(self, input):
         embedded = self.dropout(self.embedding(input))
-        output, hidden = self.rnn(embedded)
+        output, hidden = self.gru(embedded)
         return output, hidden  # output - [B,S,2F], hidden - [2,B,F]
 
 
@@ -46,12 +46,12 @@ class BahdanauAttention(nn.Module):
         return context, weights  # context - [B,1,2F], weights - [B,1,S]
 
 
-class DecoderAttentionRNN(nn.Module):
+class Decoder(nn.Module):
     def __init__(self, vocab_length, emb_dim=620, hidden_size=1000, dropout_p=0.1):
-        super(DecoderAttentionRNN, self).__init__()
+        super(Decoder, self).__init__()
         self.embedding = nn.Embedding(vocab_length, emb_dim)
         self.attention = BahdanauAttention(hidden_size)
-        self.rnn = nn.RNN(emb_dim + 2 * hidden_size, hidden_size, batch_first=True)
+        self.gru = nn.GRU(emb_dim + 2 * hidden_size, hidden_size, batch_first=True)
         self.out = nn.Linear(hidden_size, vocab_length)
         self.proj = nn.Linear(2 * hidden_size, hidden_size)
         self.dropout = nn.Dropout(dropout_p)
@@ -92,9 +92,9 @@ class DecoderAttentionRNN(nn.Module):
 
         query = hidden.permute(1, 0, 2)  # [B,1,F]
         context, attn_weights = self.attention(query, encoder_outputs)
-        input_rnn = torch.cat((embedded, context), dim=2)
+        input_gru = torch.cat((embedded, context), dim=2)
 
-        output, hidden = self.rnn(input_rnn, hidden)
+        output, hidden = self.gru(input_gru, hidden)
         output = self.out(output)
 
         return output, hidden, attn_weights

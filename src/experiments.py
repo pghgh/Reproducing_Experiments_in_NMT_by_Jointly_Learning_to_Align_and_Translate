@@ -7,7 +7,7 @@ https://docs.pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.htm
 
 # TAKEN FROM START 1
 from torch.utils.data import DataLoader, TensorDataset
-from src.RNNsearch import EncoderBiRNN, DecoderAttentionRNN
+from src.RNNsearch import Encoder, Decoder
 import torch
 import torch.nn as nn
 from torch import optim
@@ -83,8 +83,8 @@ if __name__ == "__main__":
     vocab_length2 = 10
 
     no_epochs = 5
-    encoder = EncoderBiRNN(vocab_length1, emb_dim, hidden_size)
-    decoder = DecoderAttentionRNN(vocab_length2, emb_dim, hidden_size)
+    encoder = Encoder(vocab_length1, emb_dim, hidden_size)
+    decoder = Decoder(vocab_length2, emb_dim, hidden_size)
 
     # dummy sentences which were converted as integers (with ids)
     sentences_list = ["i saw a black cat", "j'ai vu un chat noir"]
