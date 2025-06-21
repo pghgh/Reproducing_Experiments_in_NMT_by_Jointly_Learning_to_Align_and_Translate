@@ -54,7 +54,6 @@ if __name__ == "__main__":
 
     no_epochs = 5
     batch_size = 1
-    hidden_dim = 2
     dropout = 0.1
 
     # start of sentence token
@@ -63,46 +62,38 @@ if __name__ == "__main__":
     EOS_token = 1
 
     # dummy test data with input and target sentence word ids
-    input_ids = [[SOS_token, 2, EOS_token], [SOS_token, 4, EOS_token]]
-    target_ids = [[SOS_token, 3, EOS_token], [SOS_token, 5, EOS_token]]
+    # the structure of the list is [[ids for sentence no. 1], ... ,[ids for sentence no. n]]
+    # a concrete example: [[SOS_token, id_for_specific_token, ..., id_for_specific_token, EOS_token], ... ,[SOS_token, id_for_specific_token, ..., id_for_specific_token, EOS_token]]
+    input_ids = [[SOS_token, 17, EOS_token], [SOS_token, 12, EOS_token]]
+    target_ids = [[SOS_token, 13, EOS_token], [SOS_token, 16, EOS_token]]
 
     # in our experiments we won't use sentences which are longer than maximum_sentence_length_allowed
     maximum_sentence_length_allowed = 10
-    # -2 is from subtracting SOS_token and EOS_token
     if len(max(input_ids, key=len)) > maximum_sentence_length_allowed:
         sys.exit()  # placeholder
 
-    # https://stackoverflow.com/a/53406082
-    # find the longest sentence length from input and target sentences
-    longest_sentence_input_len = len(max(input_ids, key=len))
-    longest_sentence_target_len = len(max(target_ids, key=len))
-    # if needed, make every sentence the same length by adding multiple EOS tokens at the end of the sentences id lists
-    if longest_sentence_input_len != longest_sentence_target_len:
-        longest_sentence_len = max(len(max(input_ids, key=len)), len(max(target_ids, key=len)))
-        ids_list = [input_ids, target_ids]
-        for list_with_ids in ids_list:
-            for sentence_ids_list in list_with_ids:
-                if len(sentence_ids_list) < longest_sentence_len:
-                    difference = longest_sentence_len - len(sentence_ids_list)
-                    while difference > 0:
-                        sentence_ids_list.append(EOS_token)
-                        difference -= 1
 
-    # + 2 for the SOS and EOS tokens
-    vocab_length_input = len(max(input_ids, key=len))
-    vocab_length_target = len(max(input_ids, key=len))
-    # embedding dimension should be smaller than any sentence length from input/target in order for the PyTorch Embedding layer to work
-    # -2 for the SOS and EOS tokens
-    shortest_sentence_len = len(min(input_ids, key=len))
-    embedding_dim = len(max(input_ids, key=len)) - 2
+    # https://discuss.pytorch.org/t/embedding-error-index-out-of-range-in-self/815
+    global_max_element_input = input_ids[0][0]
+    for input_ids_list in input_ids:
+        if global_max_element_input < max(input_ids_list):
+            global_max_element_input = max(input_ids_list)
+    global_max_element_target = target_ids[0][0]
+    for target_ids_list in target_ids:
+        if global_max_element_target < max(target_ids_list):
+            global_max_element_target = max(target_ids_list)
+    global_max_element = max(global_max_element_input, global_max_element_target)
+    vocab_length = global_max_element + 1
+    hidden_dim = global_max_element + 2
+
 
     input_ids = torch.tensor(input_ids).to(torch.int64)
     target_ids = torch.tensor(target_ids).to(torch.int64)
     training_data = TensorDataset(input_ids, target_ids)
     train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
 
-    encoder = Encoder(vocab_length_input, embedding_dim, hidden_dim, dropout)
-    decoder = Decoder(vocab_length_target, embedding_dim, hidden_dim, dropout)
+    encoder = Encoder(vocab_length, hidden_dim, dropout)
+    decoder = Decoder(vocab_length, hidden_dim, dropout)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(encoder.to(device))

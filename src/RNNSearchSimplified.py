@@ -18,10 +18,10 @@ EOS_token = 1
 maximum_sentence_length_allowed = 10
 
 class Encoder(nn.Module):
-    def __init__(self, input_dim, embedding_dim, hidden_dim, dropout):
+    def __init__(self, input_dim, hidden_dim, dropout):
         super().__init__()
-        self.embedding = nn.Embedding(num_embeddings=input_dim, embedding_dim=embedding_dim)
-        self.gru = nn.GRU(input_size=embedding_dim, hidden_size=hidden_dim)
+        self.embedding = nn.Embedding(num_embeddings=input_dim, embedding_dim=hidden_dim)
+        self.gru = nn.GRU(input_size=hidden_dim, hidden_size=hidden_dim)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, input):
@@ -33,11 +33,11 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, input_dim, embedding_dim, hidden_dim, dropout):
+    def __init__(self, input_dim, hidden_dim, dropout):
         super().__init__()
-        self.embedding = nn.Embedding(num_embeddings=input_dim, embedding_dim=embedding_dim)
+        self.embedding = nn.Embedding(num_embeddings=input_dim, embedding_dim=hidden_dim)
         self.attention = Attention(hidden_dim)
-        self.gru = nn.GRU(input_size=embedding_dim, hidden_size=hidden_dim)
+        self.gru = nn.GRU(input_size=hidden_dim, hidden_size=hidden_dim)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, input, hidden_layer, target_tensor):
