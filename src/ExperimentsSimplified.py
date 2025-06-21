@@ -13,7 +13,7 @@ def train(train_dataloader, encoder, decoder, n_epochs, learning_rate=10 ** -6, 
     encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate)
     decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
     # L_{2}-norm, according to the paper
-    criterion = nn.NLLLoss()
+    criterion = nn.MSELoss()
 
     for epoch in range(1, n_epochs + 1):
         loss = train_epoch(train_dataloader, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion)
@@ -35,8 +35,11 @@ def train_epoch(dataloader, encoder, decoder, encoder_optimizer,
 
         encoder_outputs, encoder_hidden = encoder(input_tensor)
         # teacher forcing is applied by using the original target_tensor
-        decoder_outputs, _ = decoder(encoder_outputs, encoder_hidden, target_tensor)
-
+        #decoder_outputs, _ = decoder(encoder_outputs, encoder_hidden, target_tensor)
+        # placeholder for decoder_outputs
+        decoder_outputs = torch.tensor([[0, 16,  1]]).to(torch.int64)
+        decoder_outputs = torch.tensor(decoder_outputs, dtype=torch.float).unsqueeze(0).requires_grad_(True)
+        target_tensor = torch.tensor(target_tensor, dtype=torch.float).unsqueeze(0).requires_grad_(True)
         loss = criterion(decoder_outputs, target_tensor)
         loss.backward()
         encoder_optimizer.step()
